@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f6da5794-6705-4583-ae40-8ce607db45e5" name="Changes" comment="Added all missing documentation">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/visualize_acquisitions.py" beforeDir="false" afterPath="$PROJECT_DIR$/visualize/visualize_acquisitions.py" afterDir="false" />
-    </list>
+    <list default="true" id="f6da5794-6705-4583-ae40-8ce607db45e5" name="Changes" comment="Added all missing documentation" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

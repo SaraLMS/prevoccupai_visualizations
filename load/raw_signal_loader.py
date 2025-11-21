@@ -200,10 +200,15 @@ def _load_sensor_file(folder_path: str, file_name: str, sensor_name: str) -> pd.
     # remove nan column (the loading of the opensignals sensor file through read_csv(...) generates a nan column
     sensor_df.dropna(axis=1, how='all', inplace=True)
 
-    # column names if it is the noise recorder or heart rate sensor
-    if sensor_name == NOISE or sensor_name == HEART:
+    # column names if it is heart rate sensor
+    if sensor_name == HEART:
 
         col_names = [TIME_COLUMN_NAME, f'{sensor_name}']
+
+    # column names if it is heart rate sensor
+    elif sensor_name == NOISE:
+
+        col_names = [TIME_COLUMN_NAME, f'{sensor_name}_db', f'{sensor_name}_dba']
 
     # perform extra steps for rotation vector
     elif sensor_name == ROT:

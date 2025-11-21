@@ -8,12 +8,12 @@ from visualize.visualize_acquisitions import visualize_daily_acquisitions, visua
 # ------------------------------------------------------------------------------------------------------------------- #
 # constants
 # ------------------------------------------------------------------------------------------------------------------- #
-VISUALIZE_DAY = False
+VISUALIZE_DAY = True
 VISUALIZE_GROUP = False
 
-GROUP_FOLDER_PATH = "D:\\Backup PrevOccupAI data\\jan2023\\data\\group3\\sensors"
-SUBJECT_NUM = "LIBPhys #002"
-DATE = "2022-07-04"
+GROUP_FOLDER_PATH = "C:\\Users\\srale\Desktop\\sensors"
+SUBJECT_NUM = "LIBPhys #005"
+DATE = "2025-11-03"
 # ------------------------------------------------------------------------------------------------------------------- #
 # program starts here
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -30,4 +30,4 @@ if __name__ == '__main__':
 
         visualize_group_acquisitions(GROUP_FOLDER_PATH)
 
-    data_dict = load.load_data_from_same_recording(os.path.join(GROUP_FOLDER_PATH, SUBJECT_NUM, DATE, '10-30-00'))
+    # data_dict = load.load_data_from_same_recording(os.path.join(GROUP_FOLDER_PATH, SUBJECT_NUM, DATE, '10-30-00'))
