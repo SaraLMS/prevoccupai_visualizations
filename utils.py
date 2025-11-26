@@ -25,10 +25,28 @@ from typing import Optional, List
 import re
 import os
 from collections import Counter
-from datetime import datetime
+from datetime import datetime as dt
 
 #internal imports
 from constants import ANDROID, ANDROID_WEAR
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# file constants
+# ------------------------------------------------------------------------------------------------------------------- #
+SHIFTS_START_TIMES = {
+    "FIRST":  ['08-00-00', '09-29-00'],
+    "SECOND": ['09-30-00', '12-30-00'],
+    "THIRD":  ['12-31-00', '16-00-00']
+}
+
+SHIFTS_END_TIMES = {
+    "FIRST":  '15-00-00',
+    "SECOND": '17-00-00',
+    "THIRD":  '20-00-00'
+}
+
+TIME_FORMAT = '%H-%M-%S'
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -95,36 +113,38 @@ def extract_date_from_path(folder_path: str) -> Optional[str]:
         return None
 
 
-def get_most_common_acquisition_times(data_path: str) -> List[datetime]:
+def convert_str_to_datetime(time_str: str, time_format: str) -> dt.time:
+    return dt.strptime(time_str, time_format).time()
+
+
+def convert_datetime_to_str(time: dt.time, time_format: str):
+    return time.strftime(time_format)
+
+
+def get_most_common_acquisition_times(data_path: str, phone_start_time: str) -> List[dt]:
     """
     retrieves the four most common acquisition times found in all acquisition times for the subjects.
     The acquisition times are found by retrieving all folder names that contain a time that can be found within
     data_path.
     :param data_path: the path to the data of the current subject
+    :param phone_start_time: str with the start time of the phone for the day
     :return: list with the four most common acquisition times. In case there are less than four acquisition times found,
     then only those are returned.
     """
     # list for storing the acquisition times
     acquisition_times_list = []
 
-    # check for group 1
-    if 'group1' in data_path:
+    # get all folder names within data path
+    for root, _, files in os.walk(data_path):
 
-        for _, dirs, files in os.walk(data_path):
-            acquisition_times_list.extend(dirs)
-    else:
+        # check if any file contains '_ANDROID_WEAR_' and if no file contains '_ANDROID_' without '_WEAR_'
+        # this is done to filter out the folders that contain the phone data
+        contains_android_wear = any(ANDROID_WEAR in filename for filename in files)
+        contains_android_only = any(ANDROID in filename and ANDROID_WEAR not in filename for filename in files)
 
-        # get all folder names within data path
-        for root, _, files in os.walk(data_path):
-
-            # check if any file contains '_ANDROID_WEAR_' and if no file contains '_ANDROID_' without '_WEAR_'
-            # this is done to filter out the folders that contain the phone data
-            contains_android_wear = any(ANDROID_WEAR in filename for filename in files)
-            contains_android_only = any(ANDROID in filename and ANDROID_WEAR not in filename for filename in files)
-
-            # filter for folders that contain EMG data (excluding folders that contain the phone data)
-            if contains_android_wear and not contains_android_only:
-                acquisition_times_list.append(os.path.basename(root))
+        # filter for folders that contain EMG data (excluding folders that contain the phone data)
+        if contains_android_wear and not contains_android_only:
+            acquisition_times_list.append(os.path.basename(root))
 
     # remove all folder names that are not times (in the database structure there are date and time folders only)
     acquisition_times_list = _remove_dates(acquisition_times_list)
@@ -132,10 +152,14 @@ def get_most_common_acquisition_times(data_path: str) -> List[datetime]:
     # standardize the times (replacing seconds with 00)
     acquisition_times_list = [time[:-2] + '00' for time in acquisition_times_list]
 
+    # get shift from
+    # TODO filter list by schedule - param schedule start from phone
+    acquisition_times_list = _filter_shift_times(acquisition_times_list, phone_start_time)
+
     # find the most common times (usually 4 due to four acquisitions a day, but could also be less)
     acquisition_times_list = get_most_common_times(acquisition_times_list, adjust_close_times=True)
 
-    return [datetime.strptime(time, "%H-%M-%S") for time in acquisition_times_list]
+    return [dt.strptime(time, TIME_FORMAT) for time in acquisition_times_list]
 
 
 def get_most_common_times(acquisition_times_list, adjust_close_times=False):
@@ -201,7 +225,7 @@ def _adjust_most_common_times(counter):
     """
 
     # Convert time strings to datetime objects and sort by occurrences and then by time
-    times = [(datetime.strptime(time, '%H-%M-%S'), time, count) for time, count in counter.items()]
+    times = [(dt.strptime(time, TIME_FORMAT), time, count) for time, count in counter.items()]
     times.sort(key=lambda x: (-x[2], x[0]))  # Sort by occurrences (desc) and then by time (asc)
 
     # List to keep the filtered times
@@ -227,3 +251,64 @@ def _adjust_most_common_times(counter):
     result_counter = Counter({time_str: count for _, time_str, count in filtered_times})
 
     return result_counter
+
+
+def _get_shift_from_phone_time(phone_start_time: str):
+
+    # TODO MIGHT HAVE TO REMOVE .000
+    phone_start_time = convert_str_to_datetime(phone_start_time, TIME_FORMAT)
+
+    # iterate through the shift times
+    for shift_name, (start_time, end_time) in SHIFTS_START_TIMES.items():
+
+        # convert to datetime
+        start_time = convert_str_to_datetime(start_time, TIME_FORMAT)
+        end_time = convert_str_to_datetime(end_time, TIME_FORMAT)
+
+        # check if the phone start time is in the shift interval
+        if start_time <= phone_start_time <= end_time:
+
+            return shift_name
+
+    raise ValueError(f"Phone start time does not fit the defined shift times")
+
+
+def _filter_shift_times(times_list: List[str], phone_start_time: str) -> List[str]:
+    # init list to store the acquisition times to keep
+    valid_times = []
+
+    # get shift from start time
+    shift = _get_shift_from_phone_time(phone_start_time)
+
+    # convert to dt
+    phone_start_time = convert_str_to_datetime(phone_start_time, TIME_FORMAT)
+
+    # get end time from shift
+    end_time = SHIFTS_END_TIMES[shift]
+    end_time = convert_str_to_datetime(end_time, TIME_FORMAT)
+
+    # iterate through all acquisition times of the week
+    for acquisition_time in times_list:
+
+        # convert to datetime
+        acquisition_time = convert_str_to_datetime(acquisition_time, TIME_FORMAT)
+
+        # check if it's in the interval
+        if phone_start_time <= acquisition_time <= end_time:
+
+            # convert back to string - fits the remaining functions better
+            acquisition_time = convert_datetime_to_str(acquisition_time, TIME_FORMAT)
+
+            # add to valid times
+            valid_times.append(acquisition_time)
+
+    return valid_times
+
+
+
+
+
+
+
+
+

@@ -21,7 +21,7 @@ import re
 # internal imports
 import load
 
-
+STUDIO_DATA = 'StudioData'
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -44,6 +44,10 @@ def get_device_filename_timestamp(folder_path: str) -> Dict[str, str]:
     start_times_dict: Dict[str, str] = {}
 
     for filename in os.listdir(folder_path):
+
+        # ignore mvc
+        if STUDIO_DATA in filename:
+            continue
 
         # extract device from filename
         device_name = load.extract_device_from_filename(filename)

@@ -29,6 +29,7 @@ from constants import WATCH, PHONE, ANDROID, ANDROID_WEAR, AVAILABLE_ANDROID_PRE
 # file specific constants
 # ------------------------------------------------------------------------------------------------------------------- #
 MIN_BYTES = 1500
+STUDIO_DATA = 'StudioData'
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
@@ -65,6 +66,10 @@ def get_file_paths_by_device(folder_path: Union[str, os.PathLike]) -> Dict[str, 
 
     # iterate through the files inside the folder
     for filename in files:
+
+        # ignore mvc
+        if STUDIO_DATA in filename:
+            continue
 
         # If less than 1 kb than it's either empty or only has the header - ignore
         if os.path.getsize(os.path.join(folder_path, filename)) <= MIN_BYTES:

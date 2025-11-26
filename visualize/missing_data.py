@@ -17,8 +17,8 @@ _find_unique_timestamps(...): Extract unique acquisition timestamps across devic
 # ------------------------------------------------------------------------------------------------------------------- #
 # imports
 # ------------------------------------------------------------------------------------------------------------------- #
-from typing import Dict, List
-from datetime import datetime
+from typing import Dict, List, Optional
+from datetime import datetime, timedelta
 
 # internal imports
 from constants import PHONE, ACQUISITION_TIME_SECONDS
@@ -29,6 +29,7 @@ from utils import get_most_common_acquisition_times
 # ------------------------------------------------------------------------------------------------------------------- #
 LENGTH = 'length'
 START_TIMES = 'start_times'
+END_TIMES = 'end_times'
 TIME_FORMAT = "%H-%M-%S"
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
@@ -58,8 +59,8 @@ def get_missing_data(subject_folder_path: str, acquisitions_dict: Dict[str, Dict
         acquisition that either did not happen or all devices failed. In this case find the last remaining missing timestamps
         based on the average start times of the entire week.
 
-    (4) For each missing timestamp, a default duration (20-minute acquisition) is appended to the list with lengths in
-        the missing data dictionary.
+    (4) For each missing timestamp, a default duration (20-minute acquisition) is used to calculate the end_times of
+    the acquisitions
 
     :param subject_folder_path: Path to the folder containing all data from the subject
     :param acquisitions_dict: A dictionary where keys are device names, and values are dictionaries with two lists:
@@ -67,8 +68,8 @@ def get_missing_data(subject_folder_path: str, acquisitions_dict: Dict[str, Dict
              - 'start_times': List of corresponding start timestamps.
              Example:
              {
-                 "phone": {"start_times": ["11:20:20.000"], "length": [10000]},
-                 "watch": {"start_times": ["10:20:50.000", "12:00:00.000"], "length": [500, 950]}
+                 "phone": {"start_times": ["11:20:20.000"], "end_times": ["11:40:20.000"]},
+                 "watch": {"start_times": ["10:20:50.000", "12:00:00.000"], "end_times": ["10:40:50.000", "12:20:00.000"]}
              }
     :param fs: the sampling frequency of the sensors in Hz. Default = 100.
     :param tolerance_seconds: Time in seconds used to consider two start times as referring to the same acquisition.
@@ -103,30 +104,69 @@ def get_missing_data(subject_folder_path: str, acquisitions_dict: Dict[str, Dict
                 temp_list = data[START_TIMES] + missing_times_list
 
                 # Get the most common expected acquisition based on the average of all days
-                average_times_list = get_most_common_acquisition_times(subject_folder_path)
+                average_times_list = get_most_common_acquisition_times(subject_folder_path, acquisitions_dict[PHONE][START_TIMES][0])
 
                 # use the averages to get only the timestamps that are missing on both devices
                 missing_times_list.extend(_get_missing_timestamps(average_times_list, temp_list))
 
                 # handle the case where the acquisition time are so mismatched that data[START_TIMES] + missing_times_list > 4
                 if len(data[START_TIMES]) + len(missing_times_list) > 4:
-                    missing_times_list.pop(-1)
+
+                    # iterate through the missing times list to remove the wrong ones
+                    for missing_time in missing_times_list:
+
+                        # there should be a difference of at leats 30 minutes between an actual acquisition time and the
+                        # calculated missing time for it to be
+                        if _has_close_time(datetime.strptime(missing_time, TIME_FORMAT),
+                                           [datetime.strptime(time, TIME_FORMAT) for time in data[START_TIMES]],
+                                           2000):
+
+                            # remove 'fake' missing time from list
+                            missing_times_list.remove(missing_time)
 
             # initialize if device not in dict
             if device not in missing_data_dict:
                 missing_data_dict[device] = {
                     START_TIMES: [],
-                    LENGTH: []
+                    END_TIMES: []
                 }
 
-            # (4) add missing times and lengths (should be 20 minutes acquisitions)
-            for missing_time in missing_times_list:
-                missing_data_dict[device][START_TIMES].append(missing_time)
-                missing_data_dict[device][LENGTH].append(ACQUISITION_TIME_SECONDS * fs)
+                # (4) append missing timestamps + end times
+                # get time to add to the start time
+                durations = [ACQUISITION_TIME_SECONDS] * len(missing_times_list)
+
+                # calculate end time
+                computed_ends = compute_end_times(missing_times_list, durations)
+
+                # add to the nested dict
+                missing_data_dict[device][START_TIMES].extend(missing_times_list)
+                missing_data_dict[device][END_TIMES].extend(computed_ends)
 
     return missing_data_dict
 
 
+def compute_end_times(start_times: List[Optional[str]], lengths_seconds: List[float]) -> List[Optional[str]]:
+    """
+    Computes end times given start_times and durations in seconds.
+
+    """
+    end_times = []
+
+    for start, dur_sec in zip(start_times, lengths_seconds):
+        if start is None:
+            end_times.append(None)
+            continue
+
+        # parse HH:MM:SS or with milliseconds
+        try:
+            t0 = datetime.strptime(start, TIME_FORMAT)
+        except ValueError:
+            t0 = datetime.strptime(start, f"{TIME_FORMAT}.%f")
+
+        t_end = (t0 + timedelta(seconds=dur_sec)).time()
+        end_times.append(t_end.strftime(TIME_FORMAT))
+
+    return end_times
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
 # ------------------------------------------------------------------------------------------------------------------- #

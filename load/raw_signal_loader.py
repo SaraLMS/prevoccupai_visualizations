@@ -29,6 +29,7 @@ import numpy as np
 from typing import List, Tuple, Dict, Any, Union
 from tqdm import tqdm
 import math
+from pathlib import Path
 
 # internal imports
 from load.parser import get_file_paths_by_device, extract_sensor_from_filename
@@ -51,6 +52,7 @@ STARTING_TIMES = 'starting times'
 STOPPING_TIMES = 'stopping times'
 
 ROUNDING_FACTOR = 1000 # sampling rate  times 10
+MIN_BYTES = 1000000 # 1mb
 # ------------------------------------------------------------------------------------------------------------------- #
 # public functions
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -82,11 +84,20 @@ def load_data_from_same_recording(folder_path: str, fs: int = 100, padding_type:
         # if the device is a muscleban the loading is handled differently
         if device != PHONE and device != WATCH:
 
-            # load emg and acc data
-            muscleban_sensor_data = _load_muscleban_data(folder_path, sensor_path_list)
+            # get the largest file only as the mbans generate multiple sometimes
+            file_path = _get_largest_file(folder_path, sensor_path_list)
 
-            # remove nan values and duplicates + reset index TODO _clean_df does not work for mban because of time column (has to be nseq)
-            # muscleban_sensor_data = _clean_df(muscleban_sensor_data)
+            # convert to Path object
+            file_path = Path(file_path)
+
+            # check minimum size
+            if file_path.stat().st_size <= MIN_BYTES:
+
+                # skip acquisition if the largest file is too short
+                continue
+
+            # load emg and acc data
+            muscleban_sensor_data = _load_muscleban_data(file_path)
 
             # the muscleban signals are already aligned in time
             # downsample muscleban data to 100 Hz
@@ -261,7 +272,7 @@ def _clean_df(sensor_df: pd.DataFrame) -> pd.DataFrame:
     return sensor_df
 
 
-def _remove_non_unit_quaternion(rotvec_df: pd.DataFrame, tol: float = 0.5) -> pd.DataFrame:
+def _remove_non_unit_quaternion(rotvec_df: pd.DataFrame, tol: float = 0.6) -> pd.DataFrame:
     """
     Remove corrupted samples from a DataFrame containing Android rotation vector data.
     Android rotation vector data are expected to be unit quaternions (i.e., their norm should be close to 1).
@@ -453,18 +464,14 @@ def _re_sample_data(sensor_data: List[pd.DataFrame], report:  Dict[str, Any], fs
     return re_sampled_data
 
 
-def _load_muscleban_data(folder_path: Union[str, os.PathLike], filenames: List[str]) -> pd.DataFrame:
+def _load_muscleban_data(file_path: Path) -> pd.DataFrame:
     """
-    Loads MuscleBan data into a DataFrame. If there are multiple muscleban files, load only the largest one.
-
+    Loads MuscleBan data into a DataFrame.
     Loads only EMG and accelerometer (x, y, z) signals, removing MAG sensor as it is unreliable.
 
-    :param folder_path: Path to the folder containing the file.
-    :param filenames: List with filenames from the same sensor
+    :param file_path: Path to the muscleban file to be loaded.
     :return:  A DataFrame containing the EMG and ACC data from the muscleban
     """
-    # get the largest file only
-    file_path = _get_largest_file(folder_path, filenames)
 
     # load data into a csv file
     sensor_df = pd.read_csv(file_path, delimiter = '\t', header=None, skiprows=3)
