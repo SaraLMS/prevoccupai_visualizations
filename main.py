@@ -10,7 +10,7 @@ from visualize.visualize_acquisitions import visualize_daily_acquisitions, visua
 # ------------------------------------------------------------------------------------------------------------------- #
 VISUALIZE_DAY = False
 VISUALIZE_WEEK = True
-SUBJECT_FOLDER_PATH = "C:\\Users\srale\\Desktop\\testess" # "E:\\Backup PrevOccupAI_PLUS Data\\data\\group1\\sensors\\LIBPhys #003"
+SUBJECT_FOLDER_PATH = "E:\\Backup PrevOccupAI_PLUS Data\\data\\group1\\sensors\\LIBPhys #001"
 DATE = "2025-09-25"
 # ------------------------------------------------------------------------------------------------------------------- #
 # program starts here

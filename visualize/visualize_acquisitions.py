@@ -105,11 +105,6 @@ def visualize_week_acquisitions(week_folder_path: str, fs: int = 100) -> None:
     # Plot each day in its own subplot
     for ax, daily_folder in zip(axs, daily_folders):
         visualize_daily_acquisitions(subject_folder_path=week_folder_path, date=daily_folder, fs=fs, ax=ax)
-        #
-        plt.figure()
-
-        visualize_daily_acquisitions(subject_folder_path=week_folder_path, date=daily_folder, fs=fs)
-        plt.show()
 
     # Hide x-axis labels for all but bottom subplot
     for ax in axs[:-1]:
@@ -120,7 +115,7 @@ def visualize_week_acquisitions(week_folder_path: str, fs: int = 100) -> None:
     ref_line = RefLine()
     #
     fig.subplots_adjust(hspace=0.6, right=0.93)  # add space for left legend
-    fig.tight_layout(rect=[0, 0, 0.91, 1])  # leave margin for legend
+    fig.tight_layout(rect=[0, 0, 0.89, 1])  # leave margin for legend
 
     fig.legend(
         handles=[missing_patch, ref_line],
@@ -192,21 +187,8 @@ def visualize_daily_acquisitions(subject_folder_path: str, date: str, fs: int, a
         fig, ax = plt.subplots(figsize=(10, 3))
 
     # Plot acquisitions and missing data
-    _plot_device_bars(
-        ax,
-        acquisitions_dict,
-        device_to_index,
-        color_map=lambda i: COLOR_PALLETE[i % len(COLOR_PALLETE)]
-    )
-    _plot_device_bars(
-        ax,
-        missing_data_dict,
-        device_to_index,
-        color_map=lambda _: 'lightgray',
-        edgecolor='#06171C',
-        linestyle='dashed',
-        linewidth=0.8
-    )
+    _plot_device_bars(ax,acquisitions_dict,device_to_index,color_map=lambda i: COLOR_PALLETE[i % len(COLOR_PALLETE)])
+    _plot_device_bars(ax,missing_data_dict,device_to_index,color_map=lambda _: 'lightgray',edgecolor='#06171C',linestyle='dashed',linewidth=0.8)
 
     # Reference line and guides
     _plot_reference_acquisition(ax, acquisitions_dict, missing_data_dict, device_to_index)
@@ -221,7 +203,16 @@ def visualize_daily_acquisitions(subject_folder_path: str, date: str, fs: int, a
     week_day, date_str = _get_day_string(
         extract_date_from_path(os.path.join(subject_folder_path, date))
     )
-    ax.set_title(f"{week_day} | {date_str}", color='#06171C')
+    ax.set_title(f"{week_day} | {date_str}", color='#06171C', fontsize=10, fontweight='bold')
+
+    # --- Custom ticks: start at min_start_time, then every 30 minutes ---
+    tick_times = []
+    current = min_start_time
+    while current <= max_end_time:
+        tick_times.append(current)
+        current += timedelta(minutes=30)
+
+    ax.set_xticks(tick_times)
 
     # Remove axes spines
     for spine in ['top', 'right', 'left', 'bottom']:
@@ -249,84 +240,6 @@ def visualize_daily_acquisitions(subject_folder_path: str, date: str, fs: int, a
         fig.tight_layout()
 
     return ax
-# # Save figure
-        # out_filename = f"group_{extract_group_from_path(subject_folder_path)}_{extract_device_num_from_path(subject_folder_path)}_{extract_date_from_path(subject_folder_path)}.png"
-        # output_path = create_dir(os.getcwd(), f"group_{extract_group_from_path(subject_folder_path)}")
-        # plt.savefig(os.path.join(output_path, out_filename), dpi=300, bbox_inches='tight')
-# def visualize_daily_acquisitions(subject_folder_path: str, date: str, fs: int) -> None:
-#     """
-#     Visualizes daily signal acquisitions per subject as horizontal bars over a timeline,
-#     including missing acquisitions. Saves the plot as a PNG file.
-#     """
-#
-#     # Load acquisitions and missing data
-#     acquisitions_dict = _get_daily_acquisitions_metadata(subject_folder_path, date, fs=fs)
-#     missing_data_dict = get_missing_data(subject_folder_path, acquisitions_dict)
-#
-#     if not acquisitions_dict:
-#         return  # nothing to plot
-#
-#     daily_folder_path = os.path.join(subject_folder_path, date)
-#
-#     # Normalize device names
-#     acquisitions_dict = _normalize_device_names(acquisitions_dict)
-#     missing_data_dict = _normalize_device_names(missing_data_dict)
-#
-#     # Add missing devices if necessary
-#     if len(acquisitions_dict) < 4:
-#         missing_data_dict = _add_missing_device(acquisitions_dict, missing_data_dict, fs=100)
-#
-#     # Compute plot time range
-#     min_start_time, max_end_time = _get_acquisition_time_range(acquisitions_dict, missing_data_dict)
-#
-#     # Sort devices according to DEVICE_ORDER
-#     all_devices = set(acquisitions_dict.keys()) | set(missing_data_dict.keys())
-#     sorted_devices = sorted(all_devices, key=lambda d: DEVICE_ORDER.index(d) if d in DEVICE_ORDER else len(DEVICE_ORDER))
-#     device_to_index = {device: i for i, device in enumerate(sorted_devices)}
-#
-#     # Start plotting
-#     fig, ax = plt.subplots(figsize=(10, 3))
-#
-#     _plot_device_bars(ax, acquisitions_dict, device_to_index, color_map=lambda i: COLOR_PALLETE[i % len(COLOR_PALLETE)])
-#     _plot_device_bars(ax, missing_data_dict, device_to_index, color_map=lambda _: 'lightgray', edgecolor='#06171C', linestyle='dashed', linewidth=0.8)
-#
-#     # Plot reference 20-minute acquisition line
-#     _plot_reference_acquisition(ax, acquisitions_dict, missing_data_dict, device_to_index)
-#
-#     # Plot horizontal guides and device labels
-#     _plot_device_labels_and_guides(ax, device_to_index, min_start_time, max_end_time)
-#
-#     # Format the x-axis as time
-#     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
-#     ax.set_xlim(min_start_time, max_end_time + timedelta(seconds=5))
-#
-#     # Remove axes spines
-#     for spine in ['top', 'right', 'left', 'bottom']:
-#         ax.spines[spine].set_visible(False)
-#
-#     # Labels
-#     ax.set_xlabel("Tempo (hh:mm)", color='#06171C')
-#     ax.set_yticks([])
-#
-#     # Weekday and date
-#     week_day, date_str = _get_day_string(extract_date_from_path(daily_folder_path))
-#     ax.set_title(f"{week_day} | {date_str}", color='#06171C')
-#
-#     # Legend for missing data
-#     missing_patch = Patch(facecolor='lightgray', edgecolor='black', linestyle='dashed', label='Sem dados')
-#     ax.legend(handles=[missing_patch, RefLine()],
-#               labels=["Sem dados", f"{ACQUISITION_TIME_SECONDS // 60} minutos"],
-#               handler_map={RefLine: HandlerRefLine()},
-#               loc='upper left', bbox_to_anchor=(1.02, 1.02), frameon=False,
-#               handleheight=1, handlelength=2, borderaxespad=0.5)
-#
-#     plt.tight_layout()
-#
-#     # Save figure
-#     out_filename = f"group_{extract_group_from_path(daily_folder_path)}_{extract_device_num_from_path(daily_folder_path)}_{extract_date_from_path(daily_folder_path)}.png"
-#     output_path = create_dir(os.getcwd(), f"group_{extract_group_from_path(daily_folder_path)}")
-#     plt.savefig(os.path.join(output_path, out_filename), dpi=300, bbox_inches='tight')
-
 #
 # ------------------------------------------------------------------------------------------------------------------- #
 # private functions
@@ -691,7 +604,7 @@ def _plot_device_labels_and_guides(ax: Axes, device_to_index: Dict[str, int], mi
         y_top = y_center + BAR_HEIGHT / 2
 
         # Draw dashed horizontal lines at the top and bottom of the bar
-        ax.hlines(y=[y_bottom, y_top], xmin=min_start_time, xmax=latest_end_time + timedelta(seconds=5), colors="#06171C", linestyles="dashed", linewidth=1.1)
+        ax.hlines(y=[y_bottom, y_top], xmin=min_start_time, xmax=latest_end_time + timedelta(seconds=5), colors="#06171C", linestyles="dashed", linewidth=0.5)
 
         # Add the device name as a label on the left side
-        ax.text(min_start_time - timedelta(seconds=500), y_center, device, va="center", ha="right", fontsize=12, color="#06171C")
+        ax.text(min_start_time - timedelta(seconds=500), y_center, device, va="center", ha="right", fontsize=10, color="#06171C")
