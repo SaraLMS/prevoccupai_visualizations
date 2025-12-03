@@ -57,7 +57,6 @@ def get_expected_devices(meta_data_df, group: str, device_num: str) -> List[str]
     # Filter the DataFrame for the given group and device number
     row = meta_data_df[(meta_data_df['group'] == group) & (meta_data_df['device_num'] == device_num)]
 
-
     # get the mac address of the musclebans
     mban_left = row.iloc[0][MBAN_LEFT]
     mban_right = row.iloc[0][MBAN_RIGHT]

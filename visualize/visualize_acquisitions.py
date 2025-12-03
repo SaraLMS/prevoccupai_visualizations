@@ -29,7 +29,7 @@ _plot_device_labels_and_guides(...): Plot device labels and dashed guidelines fo
 import os
 import glob
 import pandas as pd
-from typing import Dict, Any, Optional, Tuple, Union, Callable
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
@@ -312,8 +312,6 @@ def _get_daily_acquisitions_metadata(subject_folder_path: str, date: str, fs: in
             # compute end time using helper
             end_time = compute_end_times([start_time], [duration_seconds])[0]
             final_dict[device][END_TIMES].append(end_time)
-
-
 
     return final_dict
 

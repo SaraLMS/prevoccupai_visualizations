@@ -22,7 +22,6 @@ _find_mban_logger_timestamps(...): Finds the last recorded timestamp for MuscleB
 # ------------------------------------------------------------------------------------------------------------------- #
 import os
 import pandas as pd
-import glob
 from typing import Optional, Dict, Set
 import re
 

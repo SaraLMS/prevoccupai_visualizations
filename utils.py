@@ -152,8 +152,7 @@ def get_most_common_acquisition_times(data_path: str, phone_start_time: str) -> 
     # standardize the times (replacing seconds with 00)
     acquisition_times_list = [time[:-2] + '00' for time in acquisition_times_list]
 
-    # get shift from
-    # TODO filter list by schedule - param schedule start from phone
+    # filter list by schedule
     acquisition_times_list = _filter_shift_times(acquisition_times_list, phone_start_time)
 
     # find the most common times (usually 4 due to four acquisitions a day, but could also be less)

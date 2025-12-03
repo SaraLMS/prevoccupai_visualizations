@@ -307,10 +307,3 @@ def _generate_time_column_from_samples(signal_size:int, fs: int):
 
     return time_column
 
-def _truncate(val, decimals=2):
-
-    factor = 10.0 ** decimals
-    truncated = math.trunc(val * factor) / factor
-
-    return truncated
-
